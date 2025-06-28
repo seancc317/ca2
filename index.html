@@ -381,8 +381,14 @@
                     // Ignore commands without wake word in always-on mode
                     return;
                 }
-                // Remove wake word variations for processing
-                const cleanCommand = lower.replace(/hey chef,?|hi chef,?|okay chef,?|chef,?/gi, '').trim();
+                // Remove wake word variations but preserve the rest of the command
+                // This regex is more careful to preserve "i'm ready" etc.
+                const cleanCommand = lower
+                    .replace(/^(hey |hi |okay |ok )?chef,?\s*/i, '')
+                    .replace(/^chef\s+/i, '')
+                    .trim();
+                    
+                console.log('Original:', command, 'Clean:', cleanCommand); // Debug
                 processCommand(cleanCommand, command);
             } else {
                 // In push-to-talk mode, process all commands
@@ -397,17 +403,60 @@
                 addToConversation('You', originalCommand);
             }
             
+            console.log('Processing command:', cleanCommand); // Debug log
+            
             // Check for "ready" with more flexible matching
             if (awaitingResponse === 'ready' && 
                 (cleanCommand.includes('ready') || 
                  cleanCommand.includes('start') || 
                  cleanCommand.includes("let's go") ||
-                 cleanCommand.includes("i'm ready") ||
+                 cleanCommand.includes("let's cook") ||
+                 cleanCommand.includes("begin") ||
                  cleanCommand === "yes")) {
                 awaitingResponse = null;
                 // Delay to ensure speech is done
                 setTimeout(() => startFirstStep(), 1000);
+            }
+            // Check for navigation commands
+            else if (cleanCommand.includes('next') || 
+                     cleanCommand.includes('done') || 
+                     cleanCommand.includes('finished') ||
+                     cleanCommand.includes('continue')) {
+                nextStep();
             } 
+            else if (cleanCommand.includes('repeat') || 
+                     cleanCommand.includes('again') ||
+                     cleanCommand.includes('what') ||
+                     cleanCommand.includes('say that')) {
+                repeatCurrentStep();
+            } 
+            else if (cleanCommand.includes('previous') || 
+                     cleanCommand.includes('back') ||
+                     cleanCommand.includes('go back')) {
+                previousStep();
+            } 
+            else if (cleanCommand.includes('help') || 
+                     cleanCommand.includes('tip') ||
+                     cleanCommand.includes('advice')) {
+                provideHelp();
+            }
+            else if (cleanCommand.includes('timer') || 
+                     cleanCommand.includes('how much time') ||
+                     cleanCommand.includes('how long')) {
+                checkTimers();
+            }
+            else {
+                // Friendly response for unrecognized commands
+                const responses = [
+                    "I didn't quite catch that! Try saying 'next' when you're ready to continue.",
+                    "Hmm, I'm not sure what you mean. You can say 'next', 'repeat', or 'help'!",
+                    "Sorry, I missed that. Ready for the next step? Just say 'next'!"
+                ];
+                const response = responses[Math.floor(Math.random() * responses.length)];
+                speak(response);
+                addToConversation('Chef', response);
+            }
+        } 
             // Check for navigation commands
             else if (cleanCommand.includes('next') || 
                      cleanCommand.includes('done') || 
