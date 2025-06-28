@@ -173,6 +173,7 @@
         let conversation = [];
         let recognition = null;
         let wakeWord = "chef"; // The assistant's name!
+        let isSpeaking = false; // Track when assistant is speaking
 
         // Recipe data
         const recipe = {
@@ -239,10 +240,33 @@
             if (!voiceEnabled) return;
             
             if ('speechSynthesis' in window) {
+                // Stop recognition while speaking to prevent self-activation
+                if (recognition && isListening) {
+                    recognition.stop();
+                }
+                
+                isSpeaking = true;
                 speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text.replace(/[🎉🎊👋👨‍🍳🙌⏰💡✨]/g, ''));
                 utterance.rate = 0.95;
                 utterance.pitch = 1.1;
+                
+                utterance.onend = () => {
+                    isSpeaking = false;
+                    // Restart recognition if it was active
+                    if (alwaysListening && recipeLoaded) {
+                        setTimeout(() => {
+                            if (recognition && !isListening) {
+                                recognition.start();
+                            }
+                        }, 500);
+                    }
+                };
+                
+                utterance.onerror = () => {
+                    isSpeaking = false;
+                };
+                
                 speechSynthesis.speak(utterance);
             }
         }
@@ -262,6 +286,9 @@
                 };
                 
                 recognition.onresult = (event) => {
+                    // Ignore results while speaking
+                    if (isSpeaking) return;
+                    
                     const transcript = event.results[event.results.length - 1][0].transcript;
                     handleVoiceCommand(transcript);
                 };
@@ -364,7 +391,11 @@
         }
         
         function processCommand(cleanCommand, originalCommand) {
-            addToConversation('You', originalCommand);
+            // Don't add to conversation if it's the assistant's own speech
+            if (!originalCommand.toLowerCase().includes('ready to start cooking') && 
+                !originalCommand.toLowerCase().includes('serves 4 people')) {
+                addToConversation('You', originalCommand);
+            }
             
             // Check for "ready" with more flexible matching
             if (awaitingResponse === 'ready' && 
@@ -374,7 +405,8 @@
                  cleanCommand.includes("i'm ready") ||
                  cleanCommand === "yes")) {
                 awaitingResponse = null;
-                startFirstStep();
+                // Delay to ensure speech is done
+                setTimeout(() => startFirstStep(), 1000);
             } 
             // Check for navigation commands
             else if (cleanCommand.includes('next') || 
