@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitchen Buddy - Your Cooking Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 min-h-screen p-4">
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="bg-white rounded-3xl shadow-xl p-6 mb-6 border border-purple-100">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg text-2xl">
+                        👨‍🍳
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-800">Kitchen Buddy</h1>
+                        <p class="text-sm text-gray-600">Your cheerful cooking companion</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="toggleVoiceOutput()" class="p-3 rounded-xl transition bg-purple-100 text-purple-600" id="voiceToggle">
+                        🔊
+                    </button>
+                    <button onclick="loadSampleRecipe()" class="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:shadow-lg transition-all font-medium">
+                        📤 Try Sample Recipe
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Always-on mic option -->
+            <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-4 border border-purple-200">
+                <label class="flex items-start gap-3 cursor-pointer">
+                    <input type="checkbox" id="alwaysListening" onchange="toggleAlwaysListening()" class="mt-1 w-5 h-5 text-purple-600 rounded focus:ring-purple-500">
+                    <div class="flex-1">
+                        <p class="font-medium text-gray-800">Enable hands-free mode 🎤</p>
+                        <p class="text-sm text-gray-600 mt-1">
+                            To make sure you don't get sauce all over your device, we can keep your mic on throughout the cooking process. Just say "Hey Chef" before your command!
+                        </p>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- Assistant Message -->
+        <div class="bg-white rounded-3xl shadow-xl p-6 mb-6 border border-pink-100">
+            <div class="flex items-start gap-4">
+                <div class="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-md text-xl">
+                    ✨
+                </div>
+                <div class="flex-1">
+                    <p class="text-gray-800 text-lg leading-relaxed" id="assistantMessage">
+                        Hey there, chef! 👋 Ready to cook something amazing? Just click "Try Sample Recipe" and I'll be your personal kitchen buddy!
+                    </p>
+                    <button id="sampleBtn" onclick="loadSampleRecipe()" class="mt-4 px-6 py-3 bg-gradient-to-r from-orange-400 to-pink-500 text-white rounded-xl hover:shadow-lg transition-all font-medium">
+                        Try Sample Recipe - Roasted Chicken! 🍗
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recipe Progress -->
+        <div id="recipeSection" class="hidden">
+            <div class="bg-white rounded-3xl shadow-xl p-6 mb-6 border border-orange-100">
+                <h2 class="text-2xl font-bold mb-4 flex items-center gap-2">
+                    <span id="recipeTitle">Roasted Chicken with Root Vegetables</span>
+                    <span class="text-sm font-normal text-gray-600">(4 servings)</span>
+                </h2>
+                
+                <!-- Progress Bar -->
+                <div class="mb-6">
+                    <div class="flex justify-between text-sm text-gray-600 mb-2">
+                        <span class="font-medium">Step <span id="currentStep">1</span> of <span id="totalSteps">7</span></span>
+                        <span class="font-medium"><span id="progress">14</span>% Complete</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                        <div id="progressBar" class="bg-gradient-to-r from-purple-400 via-pink-400 to-orange-400 h-4 rounded-full transition-all duration-700 flex items-center justify-end pr-2" style="width: 14%">
+                            <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Step -->
+                <div class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-5 mb-4 border border-purple-200">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-xl flex items-center justify-center font-bold text-lg shadow-md" id="stepNumber">
+                            1
+                        </div>
+                        <h3 class="font-bold text-lg text-gray-800">Current Step</h3>
+                    </div>
+                    <p class="text-gray-700 ml-13 text-lg leading-relaxed" id="stepText">
+                        <!-- Step instructions will go here -->
+                    </p>
+                    <div id="tipBox" class="ml-13 mt-3 p-3 bg-yellow-50 rounded-xl border border-yellow-200 hidden">
+                        <p class="text-sm text-yellow-800 flex items-start gap-2">
+                            <span>💡</span>
+                            <span id="tipText"></span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Step Navigation -->
+                <div class="flex gap-3">
+                    <button onclick="previousStep()" id="prevBtn" class="px-5 py-3 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium">
+                        Previous
+                    </button>
+                    <button onclick="nextStep()" class="flex-1 px-5 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:shadow-lg transition-all font-medium flex items-center justify-center gap-2">
+                        <span id="nextBtnText">Next Step</span>
+                        <span>→</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Timers -->
+        <div id="timersSection" class="hidden">
+            <div class="bg-white rounded-3xl shadow-xl p-6 mb-6 border border-blue-100">
+                <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+                    ⏰ Active Timers
+                </h3>
+                <div class="space-y-3" id="timersList">
+                    <!-- Timers will be added here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Voice Control & Conversation -->
+        <div class="bg-white rounded-3xl shadow-xl p-6 border border-purple-100">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-bold mb-1">Voice Assistant</h3>
+                    <p class="text-sm text-gray-600">Ask me anything about the recipe!</p>
+                </div>
+                <button onclick="toggleListening()" id="micBtn" class="p-4 rounded-2xl transition-all shadow-lg bg-gradient-to-r from-purple-500 to-pink-500 hover:shadow-xl">
+                    <span class="text-2xl">🎤</span>
+                </button>
+            </div>
+            
+            <!-- Always-on mic indicator -->
+            <div id="alwaysOnIndicator" class="hidden mt-4 p-3 bg-green-50 rounded-xl border border-green-200 flex items-center gap-2">
+                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <p class="text-sm text-green-700">Listening for "Hey Chef" - just say "Hey Chef" followed by your command!</p>
+            </div>
+            
+            <!-- Recent Conversation -->
+            <div id="conversationBox" class="hidden mt-4 pt-4 border-t border-gray-200 max-h-40 overflow-y-auto">
+                <p class="text-xs text-gray-500 mb-2">Recent conversation:</p>
+                <div id="conversationList">
+                    <!-- Conversation items will be added here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let currentStepIndex = 0;
+        let isListening = false;
+        let alwaysListening = false;
+        let voiceEnabled = true;
+        let recipeLoaded = false;
+        let awaitingResponse = null;
+        let timers = [];
+        let conversation = [];
+        let recognition = null;
+        let wakeWord = "chef"; // The assistant's name!
+
+        // Recipe data
+        const recipe = {
+            title: "Roasted Chicken with Root Vegetables",
+            servings: 4,
+            steps: [
+                {
+                    instruction: "dice one large yellow onion into roughly 1/2 inch pieces",
+                    detailed: "Take your large yellow onion and cut off both ends. Peel off the papery outer skin. Cut the onion in half from top to bottom. Place each half flat-side down, make horizontal cuts parallel to the cutting board (but don't cut all the way through), then make vertical cuts from top to bottom, and finally cut across to create dice.",
+                    technique: "dice an onion",
+                    time: null,
+                    tips: "Pro tip: Keep the root end intact while cutting - it holds the onion together and makes dicing way easier! If your eyes start watering, try chilling the onion in the fridge for 15 minutes before cutting."
+                },
+                {
+                    instruction: "peel and chop your 3 carrots and 2 potatoes into 1-inch chunks",
+                    detailed: "Using a vegetable peeler, peel all 3 carrots and 2 potatoes. For the carrots, cut them into rounds about 1 inch thick. For the potatoes, cut them in half lengthwise, then cut each half into 3-4 chunks. Try to keep all pieces roughly the same size - about 1 inch - so they cook evenly.",
+                    technique: "chop vegetables evenly",
+                    time: null,
+                    tips: "Keeping vegetables the same size is key for even cooking! Don't worry if they're not perfect cubes - rustic chunks work great for roasting."
+                },
+                {
+                    instruction: "season your whole chicken inside and out",
+                    detailed: "Pat the chicken completely dry with paper towels - this is crucial for crispy skin! Sprinkle salt inside the cavity of the chicken. Then season the outside all over with the remaining salt, pepper, and dried herbs. Really get in there and make sure every part is seasoned. Don't forget the back!",
+                    technique: "season a whole chicken",
+                    time: null,
+                    tips: "Dry chicken = crispy skin! Take your time with this step. You can even season the chicken and let it sit in the fridge for 30 minutes for even better flavor."
+                },
+                {
+                    instruction: "heat 2 tablespoons of olive oil in a large oven-safe skillet or roasting pan",
+                    detailed: "Place your oven-safe skillet or roasting pan on the stove over medium-high heat. Add the 2 tablespoons of olive oil and swirl it around to coat the bottom. The oil is ready when it shimmers and moves easily in the pan - about 2-3 minutes. If it starts smoking, it's too hot - remove from heat for a moment.",
+                    technique: null,
+                    time: null,
+                    tips: "No oven-safe skillet? No problem! You can sear the chicken in any pan and transfer it to a roasting dish."
+                },
+                {
+                    instruction: "brown the seasoned chicken on all sides",
+                    detailed: "Carefully place the chicken breast-side down in the hot oil. Let it sizzle without moving it for about 4-5 minutes until golden brown. Using tongs or two wooden spoons, carefully flip the chicken to brown the back for another 4-5 minutes. Then turn it breast-side up. The skin should be beautifully golden!",
+                    technique: "sear meat properly",
+                    time: 10,
+                    tips: "Don't move the chicken too early! Let it get that beautiful golden crust. The sizzling sound is your friend here."
+                },
+                {
+                    instruction: "arrange all your chopped vegetables around the chicken and put everything in the oven at 425°F",
+                    detailed: "Scatter your diced onions, carrot chunks, and potato pieces around the chicken in the pan. Drizzle them with any remaining oil in the pan and give them a quick toss to coat. Nestle the 3 garlic cloves (you can leave them whole with skin on) among the vegetables. Slide the whole pan into your preheated 425°F oven.",
+                    technique: null,
+                    time: 45,
+                    tips: "Vegetables on the bottom will get extra flavorful from the chicken drippings! Arrange them in a single layer for best roasting."
+                },
+                {
+                    instruction: "let the chicken rest before carving",
+                    detailed: "Remove the pan from the oven (use oven mitts!). Transfer the chicken to a cutting board and tent it loosely with aluminum foil. Let it rest for 10 minutes - this allows the juices to redistribute throughout the meat. Meanwhile, give the vegetables a stir and keep them warm in the pan.",
+                    technique: "rest meat properly",
+                    time: 10,
+                    tips: "Resting is not optional - it's the secret to juicy chicken! Use this time to set the table or make a quick pan sauce with the drippings."
+                }
+            ]
+        };
+
+        // Initialize
+        document.getElementById('totalSteps').textContent = recipe.steps.length;
+
+        // Speech functions
+        function speak(text) {
+            if (!voiceEnabled) return;
+            
+            if ('speechSynthesis' in window) {
+                speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text.replace(/[🎉🎊👋👨‍🍳🙌⏰💡✨]/g, ''));
+                utterance.rate = 0.95;
+                utterance.pitch = 1.1;
+                speechSynthesis.speak(utterance);
+            }
+        }
+
+        // Voice recognition setup
+        function setupRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = alwaysListening;
+                recognition.interimResults = false;
+                recognition.lang = 'en-US';
+                
+                recognition.onstart = () => {
+                    isListening = true;
+                    document.getElementById('micBtn').classList.add('animate-pulse', 'from-red-500', 'to-pink-500');
+                };
+                
+                recognition.onresult = (event) => {
+                    const transcript = event.results[event.results.length - 1][0].transcript;
+                    handleVoiceCommand(transcript);
+                };
+                
+                recognition.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                    if (!alwaysListening) {
+                        isListening = false;
+                        document.getElementById('micBtn').classList.remove('animate-pulse', 'from-red-500', 'to-pink-500');
+                    }
+                };
+                
+                recognition.onend = () => {
+                    if (alwaysListening && recipeLoaded) {
+                        recognition.start();
+                    } else {
+                        isListening = false;
+                        document.getElementById('micBtn').classList.remove('animate-pulse', 'from-red-500', 'to-pink-500');
+                    }
+                };
+                
+                return true;
+            }
+            return false;
+        }
+
+        // Toggle functions
+        function toggleVoiceOutput() {
+            voiceEnabled = !voiceEnabled;
+            document.getElementById('voiceToggle').textContent = voiceEnabled ? '🔊' : '🔇';
+            document.getElementById('voiceToggle').className = voiceEnabled 
+                ? 'p-3 rounded-xl transition bg-purple-100 text-purple-600' 
+                : 'p-3 rounded-xl transition bg-gray-100 text-gray-400';
+        }
+
+        function toggleAlwaysListening() {
+            alwaysListening = document.getElementById('alwaysListening').checked;
+            if (alwaysListening && recipeLoaded) {
+                document.getElementById('alwaysOnIndicator').classList.remove('hidden');
+                startListening();
+            } else {
+                document.getElementById('alwaysOnIndicator').classList.add('hidden');
+                if (recognition) recognition.stop();
+            }
+        }
+
+        function toggleListening() {
+            if (alwaysListening) return;
+            
+            if (isListening) {
+                if (recognition) recognition.stop();
+            } else {
+                startListening();
+            }
+        }
+
+        function startListening() {
+            if (!setupRecognition()) {
+                // Fallback for demo
+                alert('Voice recognition not available. Using demo mode - click Next Step to progress.');
+                return;
+            }
+            recognition.start();
+        }
+
+        // Recipe functions
+        function loadSampleRecipe() {
+            recipeLoaded = true;
+            currentStepIndex = 0;
+            document.getElementById('sampleBtn').classList.add('hidden');
+            document.getElementById('recipeSection').classList.remove('hidden');
+            
+            const message = `Awesome! 🎉 We're making ${recipe.title}! This delicious meal serves ${recipe.servings} people and will take about 45 minutes in the oven. When you're ready to start cooking, just say "Hey Chef, I'm ready" or press the microphone button!`;
+            
+            document.getElementById('assistantMessage').textContent = message;
+            speak(message);
+            awaitingResponse = 'ready';
+            
+            if (alwaysListening) {
+                startListening();
+            }
+        }
+
+        function handleVoiceCommand(command) {
+            const lower = command.toLowerCase();
+            
+            // In always-on mode, check for wake word first
+            if (alwaysListening) {
+                if (!lower.includes('chef')) {
+                    // Ignore commands without wake word in always-on mode
+                    return;
+                }
+                // Remove wake word variations for processing
+                const cleanCommand = lower.replace(/hey chef,?|hi chef,?|okay chef,?|chef,?/gi, '').trim();
+                processCommand(cleanCommand, command);
+            } else {
+                // In push-to-talk mode, process all commands
+                processCommand(lower, command);
+            }
+        }
+        
+        function processCommand(cleanCommand, originalCommand) {
+            addToConversation('You', originalCommand);
+            
+            // Check for "ready" with more flexible matching
+            if (awaitingResponse === 'ready' && 
+                (cleanCommand.includes('ready') || 
+                 cleanCommand.includes('start') || 
+                 cleanCommand.includes("let's go") ||
+                 cleanCommand.includes("i'm ready") ||
+                 cleanCommand === "yes")) {
+                awaitingResponse = null;
+                startFirstStep();
+            } 
+            // Check for navigation commands
+            else if (cleanCommand.includes('next') || 
+                     cleanCommand.includes('done') || 
+                     cleanCommand.includes('finished') ||
+                     cleanCommand.includes('continue')) {
+                nextStep();
+            } 
+            else if (cleanCommand.includes('repeat') || 
+                     cleanCommand.includes('again') ||
+                     cleanCommand.includes('what') ||
+                     cleanCommand.includes('say that')) {
+                repeatCurrentStep();
+            } 
+            else if (cleanCommand.includes('previous') || 
+                     cleanCommand.includes('back') ||
+                     cleanCommand.includes('go back')) {
+                previousStep();
+            } 
+            else if (cleanCommand.includes('help') || 
+                     cleanCommand.includes('tip') ||
+                     cleanCommand.includes('advice')) {
+                provideHelp();
+            }
+            else if (cleanCommand.includes('timer') || 
+                     cleanCommand.includes('how much time') ||
+                     cleanCommand.includes('how long')) {
+                checkTimers();
+            }
+            else {
+                // Friendly response for unrecognized commands
+                const responses = [
+                    "I didn't quite catch that! Try saying 'next' when you're ready to continue.",
+                    "Hmm, I'm not sure what you mean. You can say 'next', 'repeat', or 'help'!",
+                    "Sorry, I missed that. Ready for the next step? Just say 'next'!"
+                ];
+                const response = responses[Math.floor(Math.random() * responses.length)];
+                speak(response);
+                addToConversation('Chef', response);
+            }
+        }
+
+        function startFirstStep() {
+            updateStepDisplay();
+            const step = recipe.steps[0];
+            const message = `Alright, let's get cooking! 👩‍🍳 First thing we're going to do is ${step.instruction}. Here's exactly how: ${step.detailed} ${step.tips || ''}`;
+            document.getElementById('assistantMessage').textContent = 'Let\'s start cooking!';
+            speak(message);
+            addToConversation('Chef', message);
+        }
+
+        function updateStepDisplay() {
+            const step = recipe.steps[currentStepIndex];
+            document.getElementById('currentStep').textContent = currentStepIndex + 1;
+            document.getElementById('stepNumber').textContent = currentStepIndex + 1;
+            document.getElementById('stepText').textContent = step.detailed;
+            
+            if (step.tips) {
+                document.getElementById('tipBox').classList.remove('hidden');
+                document.getElementById('tipText').textContent = step.tips;
+            } else {
+                document.getElementById('tipBox').classList.add('hidden');
+            }
+            
+            const progress = Math.round(((currentStepIndex + 1) / recipe.steps.length) * 100);
+            document.getElementById('progress').textContent = progress;
+            document.getElementById('progressBar').style.width = progress + '%';
+            
+            document.getElementById('prevBtn').disabled = currentStepIndex === 0;
+            document.getElementById('nextBtnText').textContent = currentStepIndex === recipe.steps.length - 1 ? "Let's Finish! 🎉" : 'Next Step';
+        }
+
+        function nextStep() {
+            if (awaitingResponse === 'ready') {
+                startFirstStep();
+                return;
+            }
+            
+            if (currentStepIndex < recipe.steps.length - 1) {
+                currentStepIndex++;
+                updateStepDisplay();
+                const step = recipe.steps[currentStepIndex];
+                const message = `Excellent job! 🙌 Moving on to step ${currentStepIndex + 1} of ${recipe.steps.length}. Now we're going to ${step.instruction}. ${step.detailed} ${step.tips || ''}`;
+                speak(message);
+                addToConversation('Chef', message);
+                
+                if (step.time) {
+                    setTimeout(() => {
+                        addTimer(step.instruction, step.time);
+                    }, 5000);
+                }
+            } else {
+                const message = `🎊 And that's a wrap! You've just created an absolutely delicious meal! The kitchen smells amazing, doesn't it? I'm so proud of you - you totally nailed it! Enjoy every bite of your homemade masterpiece! 👨‍🍳`;
+                document.getElementById('assistantMessage').textContent = message;
+                speak(message);
+                addToConversation('Chef', message);
+            }
+        }
+
+        function previousStep() {
+            if (currentStepIndex > 0) {
+                currentStepIndex--;
+                updateStepDisplay();
+                repeatCurrentStep();
+            }
+        }
+
+        function repeatCurrentStep() {
+            const step = recipe.steps[currentStepIndex];
+            const message = `No problem, let me repeat that! We're going to ${step.instruction}. ${step.detailed} ${step.tips || ''}`;
+            speak(message);
+            addToConversation('Chef', 'Repeating current step...');
+        }
+
+        function provideHelp() {
+            const step = recipe.steps[currentStepIndex];
+            if (step.tips) {
+                speak(step.tips);
+                addToConversation('Chef', step.tips);
+            }
+        }
+
+        function addToConversation(speaker, message) {
+            conversation.push({ speaker, message });
+            document.getElementById('conversationBox').classList.remove('hidden');
+            const list = document.getElementById('conversationList');
+            
+            // Keep only last 3 messages
+            if (conversation.length > 3) {
+                conversation = conversation.slice(-3);
+            }
+            
+            list.innerHTML = conversation.map(msg => `
+                <div class="text-sm mb-2 ${msg.speaker === 'You' ? 'text-purple-600' : 'text-gray-700'}">
+                    <span class="font-medium">${msg.speaker}:</span> ${msg.message.substring(0, 100)}${msg.message.length > 100 ? '...' : ''}
+                </div>
+            `).join('');
+        }
+
+        // Timer functions
+        function addTimer(name, minutes) {
+            const timer = {
+                id: Date.now(),
+                name: name.substring(0, 30),
+                duration: minutes * 60,
+                remaining: minutes * 60
+            };
+            timers.push(timer);
+            document.getElementById('timersSection').classList.remove('hidden');
+            
+            const message = `Perfect! Timer's on! ⏰ I've got a ${minutes}-minute countdown running.`;
+            speak(message);
+            updateTimers();
+        }
+
+        function updateTimers() {
+            const list = document.getElementById('timersList');
+            list.innerHTML = timers.map(timer => `
+                <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 flex items-center justify-between border border-blue-200">
+                    <span class="font-semibold text-gray-700 capitalize">${timer.name}</span>
+                    <span class="text-3xl font-mono font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        ${formatTime(timer.remaining)}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        function checkTimers() {
+            if (timers.length === 0) {
+                const message = "No timers are currently running.";
+                speak(message);
+                addToConversation('Chef', message);
+            } else {
+                const timerStatus = timers.map(t => 
+                    `${t.name} has ${Math.floor(t.remaining / 60)} minutes remaining`
+                ).join(', ');
+                speak(timerStatus);
+                addToConversation('Chef', timerStatus);
+            }
+        }
+
+        // Timer countdown
+        setInterval(() => {
+            timers = timers.map(timer => ({
+                ...timer,
+                remaining: Math.max(0, timer.remaining - 1)
+            })).filter(timer => {
+                if (timer.remaining === 0 && !timer.alerted) {
+                    timer.alerted = true;
+                    const message = `🎉 Ding ding! Your ${timer.name} timer is up! Time to check on that deliciousness!`;
+                    document.getElementById('assistantMessage').textContent = message;
+                    speak(message);
+                    addToConversation('Chef', message);
+                    
+                    setTimeout(() => {
+                        timers = timers.filter(t => t.id !== timer.id);
+                        if (timers.length === 0) {
+                            document.getElementById('timersSection').classList.add('hidden');
+                        }
+                        updateTimers();
+                    }, 5000);
+                }
+                return timer.remaining > 0 || !timer.alerted;
+            });
+            
+            if (timers.length > 0) {
+                updateTimers();
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
