@@ -420,7 +420,13 @@
         function startFirstStep() {
             updateStepDisplay();
             const step = recipe.steps[0];
-            const message = `Alright, let's get cooking! 👩‍🍳 First thing we're going to do is ${step.instruction}. Here's exactly how: ${step.detailed} ${step.tips || ''}`;
+            const message = `Alright, let's get cooking! 👩‍🍳 First thing we're going to do is ${step.instruction}. Here's exactly how: ${step.detailed}`;
+            
+            // Add tips if available
+            if (step.tips) {
+                message += ` ${step.tips}`;
+            }
+            
             document.getElementById('assistantMessage').textContent = 'Let\'s start cooking!';
             speak(message);
             addToConversation('Chef', message);
