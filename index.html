@@ -101,6 +101,14 @@
             </div>
         </div>
 
+        <!-- Active Timers (Hidden Initially) -->
+        <div id="timersSection" style="display: none;">
+            <div class="bg-white rounded-3xl shadow-xl p-6 mb-6 border border-blue-100">
+                <h3 class="text-lg font-bold mb-4">⏰ Active Timers</h3>
+                <div id="timersList" class="space-y-3"></div>
+            </div>
+        </div>
+
         <!-- Voice Control -->
         <div class="bg-white rounded-3xl shadow-xl p-6 border border-purple-100">
             <div class="flex items-center justify-between mb-4">
@@ -128,6 +136,7 @@
         let recipeLoaded = false;
         let awaitingReady = false;
         let recognition = null;
+        let timers = [];
 
         // Recipe
         const recipe = {
@@ -155,17 +164,20 @@
                 {
                     instruction: "brown the seasoned chicken on all sides",
                     detailed: "Carefully place the chicken breast-side down in the hot oil. Let it sizzle for 4-5 minutes until golden. Using tongs, flip to brown the back, then turn breast-side up.",
-                    tips: "Don't move the chicken too early! Let it get that golden crust."
+                    tips: "Don't move the chicken too early! Let it get that golden crust.",
+                    time: 10
                 },
                 {
                     instruction: "arrange vegetables around the chicken and put in the oven at 425°F",
                     detailed: "Scatter your chopped vegetables around the chicken. Drizzle with oil and toss. Slide into your preheated 425°F oven.",
-                    tips: "Vegetables on the bottom get extra flavorful from the drippings!"
+                    tips: "Vegetables on the bottom get extra flavorful from the drippings!",
+                    time: 45
                 },
                 {
                     instruction: "let the chicken rest before carving",
                     detailed: "Remove from oven (use mitts!). Transfer chicken to a cutting board and tent with foil. Let rest 10 minutes.",
-                    tips: "Resting is the secret to juicy chicken!"
+                    tips: "Resting is the secret to juicy chicken!",
+                    time: 10
                 }
             ]
         };
@@ -270,7 +282,15 @@
         function announceStep(index) {
             const step = recipe.steps[index];
             const stepNum = index + 1;
-            const message = `Step ${stepNum}: Let's ${step.instruction}. ${step.detailed} ${step.tips}`;
+            let message = `Step ${stepNum}: Let's ${step.instruction}. ${step.detailed} ${step.tips}`;
+            
+            // Add timer info if this step has one
+            if (step.time) {
+                message += ` This will take ${step.time} minutes. I'll set a timer for you!`;
+                // Set timer after a short delay
+                setTimeout(() => startTimer(step.instruction, step.time), 3000);
+            }
+            
             speak(message);
             document.getElementById('assistantMessage').textContent = `Step ${stepNum}: ${step.instruction}`;
         }
@@ -322,6 +342,59 @@
             document.getElementById('nextBtnText').textContent = 
                 currentStepIndex === recipe.steps.length - 1 ? "Finish!" : "Next Step";
         }
+
+        // Timer Functions
+        function startTimer(name, minutes) {
+            const timer = {
+                id: Date.now(),
+                name: name.substring(0, 30),
+                duration: minutes * 60,
+                remaining: minutes * 60
+            };
+            timers.push(timer);
+            document.getElementById('timersSection').style.display = 'block';
+            
+            const message = `Timer set! I'll let you know when your ${minutes} minutes are up.`;
+            speak(message);
+            updateTimerDisplay();
+        }
+
+        function updateTimerDisplay() {
+            const list = document.getElementById('timersList');
+            list.innerHTML = timers.map(timer => `
+                <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-4 flex items-center justify-between border border-blue-200">
+                    <span class="font-semibold text-gray-700">${timer.name}</span>
+                    <span class="text-2xl font-mono font-bold text-blue-600">
+                        ${Math.floor(timer.remaining / 60)}:${(timer.remaining % 60).toString().padStart(2, '0')}
+                    </span>
+                </div>
+            `).join('');
+        }
+
+        // Timer countdown
+        setInterval(() => {
+            let activeTimers = false;
+            timers = timers.map(timer => {
+                if (timer.remaining > 0) {
+                    timer.remaining--;
+                    activeTimers = true;
+                    
+                    // Alert when timer completes
+                    if (timer.remaining === 0) {
+                        const message = `🎉 Ding ding! Your ${timer.name} timer is done!`;
+                        speak(message);
+                        document.getElementById('assistantMessage').textContent = message;
+                    }
+                }
+                return timer;
+            }).filter(timer => timer.remaining > 0);
+            
+            if (activeTimers) {
+                updateTimerDisplay();
+            } else if (timers.length === 0) {
+                document.getElementById('timersSection').style.display = 'none';
+            }
+        }, 1000);
 
         // Checkbox handler
         document.getElementById('alwaysListening').addEventListener('change', (e) => {
