@@ -357,7 +357,7 @@
         // Recipe functions
         function loadSampleRecipe() {
             recipeLoaded = true;
-            currentStepIndex = 0;
+            currentStepIndex = -1; // Start at -1 so first "next" goes to step 0
             document.getElementById('sampleBtn').classList.add('hidden');
             document.getElementById('recipeSection').classList.remove('hidden');
             
@@ -465,6 +465,8 @@
         }
 
         function updateStepDisplay() {
+            if (currentStepIndex < 0 || currentStepIndex >= recipe.steps.length) return;
+            
             const step = recipe.steps[currentStepIndex];
             document.getElementById('currentStep').textContent = currentStepIndex + 1;
             document.getElementById('stepNumber').textContent = currentStepIndex + 1;
@@ -486,8 +488,18 @@
         }
 
         function nextStep() {
+            // Special handling for the ready state
             if (awaitingResponse === 'ready') {
+                awaitingResponse = null;
                 startFirstStep();
+                return;
+            }
+            
+            // Don't allow next if we haven't started yet
+            if (currentStepIndex === -1) {
+                const message = "Let's start with the first step! Say 'Hey Chef, I'm ready' when you want to begin.";
+                speak(message);
+                addToConversation('Chef', message);
                 return;
             }
             
