@@ -196,8 +196,11 @@
         function loadSampleRecipe() {
             recipeLoaded = true;
             awaitingReady = true;
+            currentStepIndex = -1; // Start before first step
             document.getElementById('recipeSection').style.display = 'block';
-            updateDisplay();
+            
+            // Hide the step display initially
+            document.querySelector('.bg-gradient-to-r.from-purple-50.to-pink-50').style.display = 'none';
             
             const message = "Awesome! 🎉 We're making Roasted Chicken with Root Vegetables! This serves 4 people and takes about 45 minutes. When you're ready to start cooking, just say 'Hey Chef, ready' or click the mic and say 'ready'!";
             
@@ -280,6 +283,12 @@
 
         // Step Management
         function announceStep(index) {
+            currentStepIndex = index;
+            updateDisplay();
+            
+            // Show the step display now
+            document.querySelector('.bg-gradient-to-r.from-purple-50.to-pink-50').style.display = 'block';
+            
             const step = recipe.steps[index];
             const stepNum = index + 1;
             let message = `Step ${stepNum}: Let's ${step.instruction}. ${step.detailed} ${step.tips}`;
@@ -323,6 +332,8 @@
 
         // Update UI
         function updateDisplay() {
+            if (currentStepIndex < 0) return; // Don't update if we haven't started
+            
             const step = recipe.steps[currentStepIndex];
             document.getElementById('currentStep').textContent = currentStepIndex + 1;
             document.getElementById('stepNumber').textContent = currentStepIndex + 1;
