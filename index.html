@@ -44,7 +44,7 @@
                     <div class="flex-1">
                         <p class="font-medium text-gray-800">Enable hands-free mode 🎤</p>
                         <p class="text-sm text-gray-600 mt-1">
-                            To make sure you don't get sauce all over your device, we can keep your mic on throughout the cooking process. Just say "Hey Chef" before your command!
+                            To make sure you don't get sauce all over your device, we can keep your mic on throughout the cooking process. You'll be able to talk naturally without pressing any buttons!
                         </p>
                     </div>
                 </label>
@@ -148,7 +148,7 @@
             <!-- Always-on mic indicator -->
             <div id="alwaysOnIndicator" class="hidden mt-4 p-3 bg-green-50 rounded-xl border border-green-200 flex items-center gap-2">
                 <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <p class="text-sm text-green-700">Listening for "Hey Chef" - just say "Hey Chef" followed by your command!</p>
+                <p class="text-sm text-green-700">Mic is always listening - just talk naturally!</p>
             </div>
             
             <!-- Recent Conversation -->
@@ -173,7 +173,6 @@
         let conversation = [];
         let recognition = null;
         let wakeWord = "chef"; // The assistant's name!
-        let isSpeaking = false; // Track when assistant is speaking
 
         // Recipe data
         const recipe = {
@@ -240,33 +239,10 @@
             if (!voiceEnabled) return;
             
             if ('speechSynthesis' in window) {
-                // Stop recognition while speaking to prevent self-activation
-                if (recognition && isListening) {
-                    recognition.stop();
-                }
-                
-                isSpeaking = true;
                 speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text.replace(/[🎉🎊👋👨‍🍳🙌⏰💡✨]/g, ''));
                 utterance.rate = 0.95;
                 utterance.pitch = 1.1;
-                
-                utterance.onend = () => {
-                    isSpeaking = false;
-                    // Restart recognition if it was active
-                    if (alwaysListening && recipeLoaded) {
-                        setTimeout(() => {
-                            if (recognition && !isListening) {
-                                recognition.start();
-                            }
-                        }, 500);
-                    }
-                };
-                
-                utterance.onerror = () => {
-                    isSpeaking = false;
-                };
-                
                 speechSynthesis.speak(utterance);
             }
         }
@@ -286,9 +262,6 @@
                 };
                 
                 recognition.onresult = (event) => {
-                    // Ignore results while speaking
-                    if (isSpeaking) return;
-                    
                     const transcript = event.results[event.results.length - 1][0].transcript;
                     handleVoiceCommand(transcript);
                 };
@@ -357,11 +330,11 @@
         // Recipe functions
         function loadSampleRecipe() {
             recipeLoaded = true;
-            currentStepIndex = -1; // Start at -1 so first "next" goes to step 0
+            currentStepIndex = 0;
             document.getElementById('sampleBtn').classList.add('hidden');
             document.getElementById('recipeSection').classList.remove('hidden');
             
-            const message = `Awesome! 🎉 We're making ${recipe.title}! This delicious meal serves ${recipe.servings} people and will take about 45 minutes in the oven. When you're ready to start cooking, just say "Hey Chef, I'm ready" or press the microphone button!`;
+            const message = `Awesome! 🎉 We're making ${recipe.title}! This delicious meal serves ${recipe.servings} people and will take about 45 minutes in the oven. When you're ready to start cooking, just say "ready" or press the microphone button!`;
             
             document.getElementById('assistantMessage').textContent = message;
             speak(message);
@@ -373,133 +346,33 @@
         }
 
         function handleVoiceCommand(command) {
+            addToConversation('You', command);
             const lower = command.toLowerCase();
             
-            // In always-on mode, check for wake word first
-            if (alwaysListening) {
-                // Check if command contains wake word
-                if (!lower.includes('chef')) {
-                    return; // Ignore if no wake word
-                }
-                // Process the full command after detecting wake word
-                processCommand(lower, command);
-            } else {
-                // In push-to-talk mode, process all commands
-                processCommand(lower, command);
-            }
-        }
-        
-        function processCommand(cleanCommand, originalCommand) {
-            addToConversation('You', originalCommand);
-            
-            // Debug log
-            console.log('Processing:', cleanCommand, 'Awaiting:', awaitingResponse);
-            
-            // Check for "ready" - be very flexible with matching
-            if (awaitingResponse === 'ready') {
-                if (cleanCommand.includes('ready') || 
-                    cleanCommand.includes('start') || 
-                    cleanCommand.includes("go") ||
-                    cleanCommand.includes("begin") ||
-                    cleanCommand.includes("yes")) {
-                    awaitingResponse = null;
-                    startFirstStep();
-                    return;
-                }
-            }
-            
-            // Check for navigation commands
-            if (cleanCommand.includes('next') || 
-                cleanCommand.includes('done') || 
-                cleanCommand.includes('finished') ||
-                cleanCommand.includes('continue')) {
+            if (awaitingResponse === 'ready' && (lower.includes('ready') || lower.includes('start') || lower.includes("let's go"))) {
+                awaitingResponse = null;
+                startFirstStep();
+            } else if (lower.includes('next') || lower.includes('done') || lower.includes('finished')) {
                 nextStep();
-            } 
-            else if (cleanCommand.includes('repeat') || 
-                     cleanCommand.includes('again') ||
-                     cleanCommand.includes('say that')) {
+            } else if (lower.includes('repeat') || lower.includes('again')) {
                 repeatCurrentStep();
-            } 
-            else if (cleanCommand.includes('previous') || 
-                     cleanCommand.includes('back')) {
+            } else if (lower.includes('previous') || lower.includes('back')) {
                 previousStep();
-            } 
-            else if (cleanCommand.includes('help') || 
-                     cleanCommand.includes('tip')) {
+            } else if (lower.includes('help')) {
                 provideHelp();
-            }
-            else if (cleanCommand.includes('timer') || 
-                     cleanCommand.includes('time')) {
-                checkTimers();
-            }
-            else {
-                // Only show error if we're not waiting for ready
-                if (awaitingResponse !== 'ready') {
-                    const response = "I didn't quite catch that! Try saying 'next' when you're ready to continue.";
-                    speak(response);
-                    addToConversation('Chef', response);
-                }
-            }
-        } 
-            // Check for navigation commands
-            else if (cleanCommand.includes('next') || 
-                     cleanCommand.includes('done') || 
-                     cleanCommand.includes('finished') ||
-                     cleanCommand.includes('continue')) {
-                nextStep();
-            } 
-            else if (cleanCommand.includes('repeat') || 
-                     cleanCommand.includes('again') ||
-                     cleanCommand.includes('what') ||
-                     cleanCommand.includes('say that')) {
-                repeatCurrentStep();
-            } 
-            else if (cleanCommand.includes('previous') || 
-                     cleanCommand.includes('back') ||
-                     cleanCommand.includes('go back')) {
-                previousStep();
-            } 
-            else if (cleanCommand.includes('help') || 
-                     cleanCommand.includes('tip') ||
-                     cleanCommand.includes('advice')) {
-                provideHelp();
-            }
-            else if (cleanCommand.includes('timer') || 
-                     cleanCommand.includes('how much time') ||
-                     cleanCommand.includes('how long')) {
-                checkTimers();
-            }
-            else {
-                // Friendly response for unrecognized commands
-                const responses = [
-                    "I didn't quite catch that! Try saying 'next' when you're ready to continue.",
-                    "Hmm, I'm not sure what you mean. You can say 'next', 'repeat', or 'help'!",
-                    "Sorry, I missed that. Ready for the next step? Just say 'next'!"
-                ];
-                const response = responses[Math.floor(Math.random() * responses.length)];
-                speak(response);
-                addToConversation('Chef', response);
             }
         }
 
         function startFirstStep() {
             updateStepDisplay();
             const step = recipe.steps[0];
-            const message = `Alright, let's get cooking! 👩‍🍳 First thing we're going to do is ${step.instruction}. Here's exactly how: ${step.detailed}`;
-            
-            // Add tips if available
-            if (step.tips) {
-                message += ` ${step.tips}`;
-            }
-            
+            const message = `Alright, let's get cooking! 👩‍🍳 First thing we're going to do is ${step.instruction}. Here's exactly how: ${step.detailed} ${step.tips || ''}`;
             document.getElementById('assistantMessage').textContent = 'Let\'s start cooking!';
             speak(message);
             addToConversation('Chef', message);
         }
 
         function updateStepDisplay() {
-            if (currentStepIndex < 0 || currentStepIndex >= recipe.steps.length) return;
-            
             const step = recipe.steps[currentStepIndex];
             document.getElementById('currentStep').textContent = currentStepIndex + 1;
             document.getElementById('stepNumber').textContent = currentStepIndex + 1;
@@ -521,18 +394,8 @@
         }
 
         function nextStep() {
-            // Special handling for the ready state
             if (awaitingResponse === 'ready') {
-                awaitingResponse = null;
                 startFirstStep();
-                return;
-            }
-            
-            // Don't allow next if we haven't started yet
-            if (currentStepIndex === -1) {
-                const message = "Let's start with the first step! Say 'Hey Chef, I'm ready' when you want to begin.";
-                speak(message);
-                addToConversation('Chef', message);
                 return;
             }
             
@@ -625,18 +488,10 @@
             `).join('');
         }
 
-        function checkTimers() {
-            if (timers.length === 0) {
-                const message = "No timers are currently running.";
-                speak(message);
-                addToConversation('Chef', message);
-            } else {
-                const timerStatus = timers.map(t => 
-                    `${t.name} has ${Math.floor(t.remaining / 60)} minutes remaining`
-                ).join(', ');
-                speak(timerStatus);
-                addToConversation('Chef', timerStatus);
-            }
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
         }
 
         // Timer countdown
